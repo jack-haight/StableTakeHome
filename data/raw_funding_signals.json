@@ -1,0 +1,122 @@
+[
+  {
+    "company": "Lumenwave AI",
+    "round": "Seed",
+    "amount_usd": 4200000,
+    "announced_date": "2026-06-28",
+    "source": "TechCrunch",
+    "description": "Lumenwave AI, a fully distributed team building voice agents for logistics, raised a $4.2M seed led by Uncork Capital. The founders are based in Austin and Lisbon and plan to stay remote-first as they scale.",
+    "hq_state_listed": "Delaware (incorporation)",
+    "team_location": "Remote (Austin, Lisbon)",
+    "employee_count_estimate": 6,
+    "linkedin_jobs_mention_remote": true
+  },
+  {
+    "company": "Fernbank Robotics",
+    "round": "Series A",
+    "amount_usd": 18000000,
+    "announced_date": "2026-06-15",
+    "source": "TechCrunch",
+    "description": "Fernbank Robotics closed an $18M Series A to build its new 40,000 sq ft manufacturing facility in Detroit, where its 90-person team is based.",
+    "hq_state_listed": "Michigan",
+    "team_location": "Detroit, MI (physical facility)",
+    "employee_count_estimate": 90,
+    "linkedin_jobs_mention_remote": false
+  },
+  {
+    "company": "Northloop Health",
+    "round": "Seed",
+    "amount_usd": 3100000,
+    "announced_date": "2026-07-02",
+    "source": "SEC Form D",
+    "description": "Northloop Health, a telehealth compliance startup, filed a Form D for a $3.1M raise. Founders previously worked remotely at two other digital health startups; no office address listed beyond a registered agent in Wyoming.",
+    "hq_state_listed": "Wyoming (incorporation)",
+    "team_location": "Remote (unclear)",
+    "employee_count_estimate": 4,
+    "linkedin_jobs_mention_remote": true
+  },
+  {
+    "company": "Cascade Freight Analytics",
+    "round": "Seed",
+    "amount_usd": 5500000,
+    "announced_date": "2026-06-30",
+    "source": "YC Launch",
+    "description": "Cascade Freight Analytics (YC S26) raised $5.5M. The two co-founders are fully remote, one in Denver and one in Toronto, and plan to hire a distributed team.",
+    "hq_state_listed": "Delaware (incorporation)",
+    "team_location": "Remote (Denver, Toronto)",
+    "employee_count_estimate": 3,
+    "linkedin_jobs_mention_remote": true
+  },
+  {
+    "company": "Ironvale Capital Partners",
+    "round": "Series B",
+    "amount_usd": 60000000,
+    "announced_date": "2026-06-20",
+    "source": "TechCrunch",
+    "description": "Ironvale Capital Partners raised a $60M Series B and announced a new 100-person office in NYC's Flatiron district.",
+    "hq_state_listed": "New York",
+    "team_location": "New York, NY (physical office)",
+    "employee_count_estimate": 140,
+    "linkedin_jobs_mention_remote": false
+  },
+  {
+    "company": "Palefire Studio",
+    "round": "Pre-Seed",
+    "amount_usd": 900000,
+    "announced_date": "2026-07-05",
+    "source": "SEC Form D",
+    "description": "Palefire Studio, an indie game studio, filed a Form D for $900K. Registered agent in Delaware; founders self-describe as 'remote by default' on their careers page.",
+    "hq_state_listed": "Delaware (incorporation)",
+    "team_location": "Remote",
+    "employee_count_estimate": 5,
+    "linkedin_jobs_mention_remote": true
+  },
+  {
+    "company": "Briarcliff Legal Tech",
+    "round": "Seed",
+    "amount_usd": 2800000,
+    "announced_date": "2026-06-10",
+    "source": "YC Launch",
+    "description": "Briarcliff Legal Tech (YC W26) raised $2.8M to build compliance software for law firms. Team of 4, fully remote across three states, incorporated in Delaware.",
+    "hq_state_listed": "Delaware (incorporation)",
+    "team_location": "Remote (multi-state)",
+    "employee_count_estimate": 4,
+    "linkedin_jobs_mention_remote": true
+  },
+  {
+    "company": "Summitgrain Foods",
+    "round": "Series A",
+    "amount_usd": 22000000,
+    "announced_date": "2026-05-28",
+    "source": "TechCrunch",
+    "description": "Summitgrain Foods raised $22M to expand its Ohio production facility and grocery distribution network.",
+    "hq_state_listed": "Ohio",
+    "team_location": "Columbus, OH (physical facility)",
+    "employee_count_estimate": 210,
+    "linkedin_jobs_mention_remote": false
+  },
+  {
+    "company": "Driftline Analytics",
+    "round": "Seed",
+    "amount_usd": 3900000,
+    "announced_date": "2026-07-08",
+    "source": "SEC Form D",
+    "description": "Driftline Analytics filed a Form D for a $3.9M raise. No physical office listed; registered agent in Wyoming, founders based in Seattle and Berlin.",
+    "hq_state_listed": "Wyoming (incorporation)",
+    "team_location": "Remote (Seattle, Berlin)",
+    "employee_count_estimate": 7,
+    "linkedin_jobs_mention_remote": true
+  },
+  {
+    "company": "Marrow Biotech",
+    "round": "Series A",
+    "amount_usd": 45000000,
+    "announced_date": "2026-06-01",
+    "source": "TechCrunch",
+    "description": "Marrow Biotech raised $45M for its wet-lab facility expansion in Cambridge, MA.",
+    "hq_state_listed": "Massachusetts",
+    "team_location": "Cambridge, MA (physical lab)",
+    "employee_count_estimate": 65,
+    "linkedin_jobs_mention_remote": false
+  }
+]

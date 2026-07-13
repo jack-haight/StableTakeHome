@@ -1,0 +1,53 @@
+# --- Project-specific: sample/scratch files ---
+# main.py is a PyCharm sample stub, not part of the app
+main.py
+
+# --- Environment & secrets ---
+.env
+.env.local
+.env.*.local
+.streamlit/secrets.toml
+*.pem
+*.key
+
+# --- Local data: generated/runtime files only ---
+# (raw_funding_signals.json is the mock input scraper.py depends on —
+#  keep that one tracked so the app runs after a fresh clone)
+data/scored_leads.csv
+data/activity_log.csv
+data/leads.csv
+campaign_metrics.csv
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# --- Virtual environments ---
+venv/
+env/
+.venv/
+ENV/
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Logs & caches ---
+*.log
+.cache/
+.pytest_cache/
+.mypy_cache/
+
+# --- Streamlit ---
+.streamlit/
