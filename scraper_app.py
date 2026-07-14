@@ -5,13 +5,8 @@ Run with:  streamlit run app_scraper.py
 
 This is a thin UI layer over scraper.py. All the actual sourcing and scoring
 logic lives there and is untouched — this app just calls run_pipeline(),
-shows the results, and lets you tweak the score threshold interactively.
-
-NOTE — MOCK DATA: fetch_funding_signals() in scraper.py currently reads
-data/raw_funding_signals.json instead of hitting a live API. Everything you
-see here (funding rounds, headcounts, "remote" signals) is placeholder data
-to demo the scoring engine end-to-end. Swap that one function for a real
-Crunchbase/YC/SEC EDGAR call and this whole app keeps working unchanged.
+shows the results, and lets you tweak the score threshold and source mode
+interactively.
 """
 
 import streamlit as st
@@ -24,33 +19,56 @@ import scraper
 st.set_page_config(page_title="Stable ICP Scraper", layout="wide")
 
 st.title("🔎 Stable ICP Scraper")
-st.warning(
-    "**Mock data mode** — results below come from `data/raw_funding_signals.json`, "
-    "not a live feed. This demos the scoring engine; swap `fetch_funding_signals()` "
-    "in `scraper.py` for a real Crunchbase / YC Launch / SEC EDGAR call and the "
-    "rest of this app keeps working as-is.",
-    icon="🧪",
-)
 
 # ---------------------------------------------------------------------------
 # Sidebar controls
 # ---------------------------------------------------------------------------
+st.sidebar.header("Source")
+mode = st.sidebar.radio(
+    "Data mode",
+    options=["mock", "live"],
+    format_func=lambda m: "🧪 Mock (local JSON demo data)" if m == "mock" else "🌐 Live (SEC EDGAR Form D)",
+)
+days_back = 14
+if mode == "live":
+    days_back = st.sidebar.slider("Days of Form D filings to pull", 1, 60, 14)
+    st.sidebar.caption(
+        "Live mode hits SEC's free EDGAR full-text search API — no key needed, "
+        "but each filing requires a follow-up fetch for the offering amount, "
+        "so larger windows take longer to load."
+    )
+
 st.sidebar.header("Filters")
 min_score = st.sidebar.slider("Minimum fit score", 0, 100, 0, step=5)
 st.sidebar.caption("Only qualified leads at or above this score are shown in the main table.")
 
-if not scraper.RAW_SIGNALS_PATH.exists():
-    st.error(
-        f"Couldn't find `{scraper.RAW_SIGNALS_PATH}`. Make sure "
-        "`data/raw_funding_signals.json` exists next to `scraper.py`."
+if mode == "mock":
+    st.warning(
+        "**Mock data mode** — results below come from `data/raw_funding_signals.json`, "
+        "not a live feed. Switch to **Live** in the sidebar to pull real, freshly-filed "
+        "SEC Form D notices instead.",
+        icon="🧪",
     )
-    st.stop()
+    if not scraper.RAW_SIGNALS_PATH.exists():
+        st.error(
+            f"Couldn't find `{scraper.RAW_SIGNALS_PATH}`. Make sure "
+            "`data/raw_funding_signals.json` exists next to `scraper.py`."
+        )
+        st.stop()
+else:
+    st.info(
+        "**Live mode** — pulling real Form D filings from SEC EDGAR. Employee count and "
+        "remote-work status aren't in Form D data, so those are conservatively defaulted "
+        "and flagged for enrichment (⚠) until a Crunchbase/Apollo source is wired in.",
+        icon="🌐",
+    )
 
-try:
-    qualified, disqualified = scraper.run_pipeline(min_score=min_score)
-except Exception as e:
-    st.error(f"Pipeline failed to run: {e}")
-    st.stop()
+with st.spinner("Running pipeline..." if mode == "mock" else "Fetching live filings from SEC EDGAR..."):
+    try:
+        qualified, disqualified = scraper.run_pipeline(min_score=min_score, mode=mode, days_back=days_back)
+    except Exception as e:
+        st.error(f"Pipeline failed to run: {e}")
+        st.stop()
 
 qualified_df = pd.DataFrame(qualified)
 disqualified_df = pd.DataFrame(disqualified)
