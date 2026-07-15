@@ -26,16 +26,28 @@ st.title("🔎 Stable ICP Scraper")
 st.sidebar.header("Source")
 mode = st.sidebar.radio(
     "Data mode",
-    options=["mock", "live"],
-    format_func=lambda m: "🧪 Mock (local JSON demo data)" if m == "mock" else "🌐 Live (SEC EDGAR Form D)",
+    options=["mock", "live", "yc"],
+    format_func=lambda m: {
+        "mock": "🧪 Mock (local JSON demo data)",
+        "live": "🌐 Live (SEC EDGAR Form D)",
+        "yc": "🚀 Live (YC directory)",
+    }[m],
 )
 days_back = 14
 if mode == "live":
     days_back = st.sidebar.slider("Days of Form D filings to pull", 1, 60, 14)
     st.sidebar.caption(
-        "Live mode hits SEC's free EDGAR full-text search API — no key needed, "
-        "but each filing requires a follow-up fetch for the offering amount, "
-        "so larger windows take longer to load."
+        "Hits SEC's free EDGAR full-text search API — no key needed, but each "
+        "filing requires a follow-up fetch for the offering amount, so larger "
+        "windows take longer to load. Covers all private offerings, so non-startup "
+        "filers (funds, real estate, etc.) are filtered out before scoring."
+    )
+elif mode == "yc":
+    days_back = st.sidebar.slider("Days since YC launch date", 7, 180, 90)
+    st.sidebar.caption(
+        "Pulls YC's public company directory (via the free yc-oss/api mirror) — "
+        "real team sizes, no key needed. Round size isn't published by YC, so "
+        "amount is a standard-deal estimate, flagged for verification."
     )
 
 st.sidebar.header("Filters")
@@ -55,12 +67,19 @@ if mode == "mock":
             "`data/raw_funding_signals.json` exists next to `scraper.py`."
         )
         st.stop()
-else:
+elif mode == "live":
     st.info(
         "**Live mode** — pulling real Form D filings from SEC EDGAR. Employee count and "
         "remote-work status aren't in Form D data, so those are conservatively defaulted "
         "and flagged for enrichment (⚠) until a Crunchbase/Apollo source is wired in.",
         icon="🌐",
+    )
+else:
+    st.info(
+        "**Live mode** — pulling real companies from YC's public directory. Team size is "
+        "real; round size isn't published by YC, so it's a standard-deal estimate flagged (⚠) "
+        "for verification before outreach.",
+        icon="🚀",
     )
 
 with st.spinner("Running pipeline..." if mode == "mock" else "Fetching live filings from SEC EDGAR..."):

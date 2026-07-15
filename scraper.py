@@ -36,7 +36,7 @@ import json
 import argparse
 import time
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import csv
 import xml.etree.ElementTree as ET
@@ -154,7 +154,7 @@ def fetch_funding_signals_edgar(days_back=14, max_results=40):
             "linkedin_jobs_mention_remote": False,
             "hq_state_listed": src.get("locationCodes", [""])[0] if src.get("locationCodes") else "",
             "source": "SEC EDGAR Form D (live)",
-            "needs_enrichment": True,
+            "approximated_fields": ["employee_count_estimate", "linkedin_jobs_mention_remote"],
         })
 
     if skipped_industry:
@@ -193,6 +193,72 @@ def _fetch_form_d_detail(cik, accession_no):
         return amount_usd, industry
     except Exception:
         return None, None
+
+
+def fetch_funding_signals_yc(days_back=90, max_results=40):
+    """
+    REAL, LIVE, NO API KEY: pulls YC's public company directory from
+    yc-oss/api — a community-maintained mirror that re-fetches YC's own
+    Algolia index daily via a GitHub Actions workflow and commits the JSON
+    straight into the repo. Fetching from raw.githubusercontent.com means
+    this doesn't depend on YC's own Algolia app-id/key pair, which is
+    exposed client-side on ycombinator.com and rotates occasionally — that
+    fragility is why hitting Algolia directly isn't worth it here.
+
+    Trade-off vs. the EDGAR source: YC's directory is already curated to
+    real operating startups, so there's no need for an industry exclude
+    list like Form D needed. But YC doesn't publish per-company round size
+    or an exact funding date — `launched_at` (when the company's page went
+    live on YC's site) is the closest proxy for "announced date", and
+    `amount_usd` is a stand-in for YC's standard base deal, not a real
+    number, so it's flagged as approximated rather than presented as fact.
+    """
+    if requests is None:
+        raise RuntimeError("`pip install requests` to use --mode yc")
+
+    url = "https://raw.githubusercontent.com/yc-oss/api/main/companies/all.json"
+    resp = requests.get(url, timeout=20)
+    resp.raise_for_status()
+    companies = resp.json()
+
+    cutoff = TODAY - timedelta(days=days_back)
+    signals = []
+    for c in companies:
+        launched_at = c.get("launched_at")
+        if not launched_at:
+            continue
+        launched_date = datetime.fromtimestamp(launched_at, tz=timezone.utc).replace(tzinfo=None)
+        if launched_date < cutoff or launched_date > TODAY:
+            continue
+        if c.get("status") == "Inactive":
+            continue
+
+        tags = [t.lower() for t in (c.get("tags") or [])]
+        is_remote_tagged = any("remote" in t for t in tags)
+        team_size = c.get("team_size")
+
+        approximated = ["amount_usd"]
+        if not team_size:
+            approximated.append("employee_count_estimate")
+
+        signals.append({
+            "company": c.get("name", "Unknown"),
+            "round": f"YC {c.get('batch', '?')} — {c.get('industry', '')}".rstrip(" —"),
+            "amount_usd": 500_000,  # standard YC base-deal estimate — NOT a confirmed round size
+            "announced_date": launched_date.strftime("%Y-%m-%d"),
+            "team_location": c.get("all_locations") or "",
+            "employee_count_estimate": team_size or 8,
+            "linkedin_jobs_mention_remote": is_remote_tagged,
+            # office city, not state of incorporation — the DE/WY scoring bonus
+            # will rarely fire from this source, unlike EDGAR's hq_state_listed
+            "hq_state_listed": c.get("all_locations") or "",
+            "source": f"YC directory (yc-oss/api) — batch {c.get('batch', '?')}",
+            "approximated_fields": approximated,
+        })
+        if len(signals) >= max_results:
+            break
+
+    return signals
 
 
 def _apply_conservative_defaults(signal):
@@ -297,6 +363,9 @@ def run_pipeline(min_score=0, mode="mock", days_back=14):
     if mode == "live":
         raw_signals = fetch_funding_signals_edgar(days_back=days_back)
         signals = [_apply_conservative_defaults(s) for s in raw_signals]
+    elif mode == "yc":
+        raw_signals = fetch_funding_signals_yc(days_back=days_back or 90)
+        signals = [_apply_conservative_defaults(s) for s in raw_signals]
     else:
         signals = fetch_funding_signals_mock()
 
@@ -304,8 +373,9 @@ def run_pipeline(min_score=0, mode="mock", days_back=14):
     for s in signals:
         score, reasons, dq, dq_reason = score_lead(s)
         contact_persona = enrich_contact(s["company"], s["employee_count_estimate"])
-        if s.get("needs_enrichment"):
-            reasons.append("⚠ headcount/remote-status assumed — needs Apollo/Clearbit enrichment before outreach")
+        approximated = s.get("approximated_fields")
+        if approximated:
+            reasons.append(f"⚠ approximated: {', '.join(approximated)} — verify before outreach")
         results.append({
             "company": s["company"],
             "round": s["round"],
@@ -342,10 +412,11 @@ def save_csv(qualified, disqualified, path=OUTPUT_PATH):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--min-score", type=int, default=0)
-    parser.add_argument("--mode", choices=["mock", "live"], default="mock",
-                         help="mock = local JSON demo data; live = real SEC EDGAR Form D pull")
+    parser.add_argument("--mode", choices=["mock", "live", "yc"], default="mock",
+                         help="mock = local JSON demo data; live = SEC EDGAR Form D pull; "
+                              "yc = YC company directory (yc-oss/api), filtered by launch date")
     parser.add_argument("--days-back", type=int, default=14,
-                         help="live mode only: how many days of Form D filings to pull")
+                         help="live/yc modes only: how many days back to pull (yc defaults to 90 if unset)")
     args = parser.parse_args()
 
     qualified, disqualified = run_pipeline(min_score=args.min_score, mode=args.mode, days_back=args.days_back)
