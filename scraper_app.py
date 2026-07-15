@@ -4,19 +4,42 @@ Stable ICP Scraper — Streamlit UI
 Run with:  streamlit run app_scraper.py
 
 This is a thin UI layer over scraper.py. All the actual sourcing and scoring
-logic lives there and is untouched — this app just calls run_pipeline(),
-shows the results, and lets you tweak the score threshold and source mode
-interactively.
+logic lives there and is untouched — this app just calls fetch_signals() /
+score_signals(), shows the results, and lets you tweak the score threshold
+and source mode interactively.
+
+CACHING: fetch_signals() is the only function that hits a network API, so
+it's wrapped in st.cache_data below, keyed on (mode, days_back). Switching
+back to a mode/window you've already loaded reuses the cached result instead
+of re-hitting SEC EDGAR or the YC directory — that's why flipping between
+tabs feels instant after the first load of each. The score-threshold slider
+never triggers a re-fetch at all, since scoring is pure local computation
+that reruns on the already-cached data. Cache lives in the Streamlit
+server's memory for 15 minutes per (mode, days_back) combo, or until you
+hit "Refresh live data" in the sidebar; a full app restart clears it. The
+scored results are also written to disk as data/scored_leads.csv on every
+run (and downloadable below) — that's the durable copy.
 """
 
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
+from datetime import datetime
 
 import scraper
 
 st.set_page_config(page_title="Stable ICP Scraper", layout="wide")
+
+
+@st.cache_data(ttl=900, show_spinner=False)  # 15 min — long enough to avoid refetching on every click
+def cached_fetch(mode, days_back):
+    """The only network-touching call in the whole app. Cached per (mode,
+    days_back); returns the raw signals plus a timestamp so the UI can show
+    how fresh the data is."""
+    signals = scraper.fetch_signals(mode=mode, days_back=days_back)
+    return signals, datetime.now()
+
 
 st.title("🔎 Stable ICP Scraper")
 
@@ -54,6 +77,11 @@ st.sidebar.header("Filters")
 min_score = st.sidebar.slider("Minimum fit score", 0, 100, 0, step=5)
 st.sidebar.caption("Only qualified leads at or above this score are shown in the main table.")
 
+if mode != "mock":
+    if st.sidebar.button("🔄 Refresh live data"):
+        cached_fetch.clear()
+        st.rerun()
+
 if mode == "mock":
     st.warning(
         "**Mock data mode** — results below come from `data/raw_funding_signals.json`, "
@@ -82,12 +110,20 @@ else:
         icon="🚀",
     )
 
-with st.spinner("Running pipeline..." if mode == "mock" else "Fetching live filings from SEC EDGAR..."):
+with st.spinner("Running pipeline..." if mode == "mock" else "Fetching live data..."):
     try:
-        qualified, disqualified = scraper.run_pipeline(min_score=min_score, mode=mode, days_back=days_back)
+        signals, fetched_at = cached_fetch(mode, days_back)
+        results = scraper.score_signals(signals)
     except Exception as e:
         st.error(f"Pipeline failed to run: {e}")
         st.stop()
+
+if mode != "mock":
+    st.sidebar.caption(f"Data fetched at {fetched_at.strftime('%-I:%M:%S %p')} · cached for 15 min")
+
+qualified = sorted([r for r in results if not r["disqualified"] and r["fit_score"] >= min_score],
+                    key=lambda r: r["fit_score"], reverse=True)
+disqualified = [r for r in results if r["disqualified"]]
 
 qualified_df = pd.DataFrame(qualified)
 disqualified_df = pd.DataFrame(disqualified)

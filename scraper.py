@@ -30,6 +30,7 @@ USAGE
   python scraper.py --mode live               # real EDGAR Form D pull, last 14 days
   python scraper.py --mode live --days-back 30
   python scraper.py --min-score 60
+  python scraper.py -- mode yc
 """
 
 import json
@@ -359,16 +360,29 @@ def score_lead(signal):
 # STEP 3 — RUN PIPELINE
 # ---------------------------------------------------------------------------
 
-def run_pipeline(min_score=0, mode="mock", days_back=14):
+def fetch_signals(mode="mock", days_back=14):
+    """
+    The ONLY function in this module that hits a network API. Kept separate
+    from scoring so a caller (e.g. the Streamlit app) can cache just this
+    step — switching the score-threshold slider shouldn't cause a re-fetch,
+    only a re-score, which is instant since it's pure local computation.
+    """
     if mode == "live":
         raw_signals = fetch_funding_signals_edgar(days_back=days_back)
-        signals = [_apply_conservative_defaults(s) for s in raw_signals]
+        return [_apply_conservative_defaults(s) for s in raw_signals]
     elif mode == "yc":
         raw_signals = fetch_funding_signals_yc(days_back=days_back or 90)
-        signals = [_apply_conservative_defaults(s) for s in raw_signals]
+        return [_apply_conservative_defaults(s) for s in raw_signals]
     else:
-        signals = fetch_funding_signals_mock()
+        return fetch_funding_signals_mock()
 
+
+def score_signals(signals):
+    """
+    Scores an already-fetched list of signals. No network calls — safe (and
+    cheap) to re-run on every UI interaction that only changes the filter,
+    not the underlying data.
+    """
     results = []
     for s in signals:
         score, reasons, dq, dq_reason = score_lead(s)
@@ -390,6 +404,13 @@ def run_pipeline(min_score=0, mode="mock", days_back=14):
             "suggested_contact": contact_persona,
             "source": s["source"],
         })
+    return results
+
+
+def run_pipeline(min_score=0, mode="mock", days_back=14):
+    """CLI convenience wrapper: fetch, score, and filter/sort in one call."""
+    signals = fetch_signals(mode=mode, days_back=days_back)
+    results = score_signals(signals)
 
     qualified = sorted([r for r in results if not r["disqualified"] and r["fit_score"] >= min_score],
                         key=lambda r: r["fit_score"], reverse=True)
